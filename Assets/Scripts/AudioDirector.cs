@@ -104,31 +104,41 @@ public class AudioDirector : MonoBehaviour
     {
         if (bank == null) return;
 
-        Play(bank.Place);
+        Play(bank.Place, 1f, bank.PlaceGain);
 
         // The clear rides on top of the placement rather than replacing it: the piece
         // did land, and dropping that sound makes a clearing move feel like it skipped
         // a step.
-        if (cleared.Any) Play(bank.Clear, bank.ClearPitch(cleared.LineCount, score.Combo));
+        if (cleared.Any)
+            Play(bank.Clear, bank.ClearPitch(cleared.LineCount, score.Combo), bank.ClearGain);
     }
 
     private void HandleGameStateChanged(bool isGameOver)
     {
         if (!isGameOver || bank == null) return;
 
-        Play(bank.GameOver);
+        Play(bank.GameOver, 1f, bank.GameOverGain);
     }
 
-    private void HandleGrabbed(BlockInstance piece) => Play(bank != null ? bank.Pickup : null);
+    private void HandleGrabbed(BlockInstance piece)
+    {
+        if (bank != null) Play(bank.Pickup, 1f, bank.PickupGain);
+    }
 
-    private void HandleRejected(BlockInstance piece) => Play(bank != null ? bank.Rejected : null);
+    private void HandleRejected(BlockInstance piece)
+    {
+        if (bank != null) Play(bank.Rejected, 1f, bank.RejectedGain);
+    }
 
-    private void HandleButtonPressed() => Play(bank != null ? bank.Button : null);
+    private void HandleButtonPressed()
+    {
+        if (bank != null) Play(bank.Button, 1f, bank.ButtonGain);
+    }
 
     // ---------- playback ----------
 
     /// <summary>Plays a one-shot on the next voice, silently doing nothing if it cannot.</summary>
-    public void Play(AudioClip clip, float pitch = 1f)
+    public void Play(AudioClip clip, float pitch = 1f, float gain = 1f)
     {
         if (clip == null || bank == null || pool == null || !GameSettings.Sound) return;
 
@@ -137,7 +147,9 @@ public class AudioDirector : MonoBehaviour
 
         source.clip = clip;
         source.pitch = pitch;
-        source.volume = bank.SfxVolume;
+        // The clip's own gain balances the set; the master is the player's volume for all
+        // of it. Clamped because the two multiplied can exceed what a source accepts.
+        source.volume = Mathf.Clamp01(bank.SfxVolume * gain);
         source.Play();
     }
 

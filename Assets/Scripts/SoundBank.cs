@@ -51,6 +51,22 @@ public class SoundBank : ScriptableObject
     [SerializeField] private AudioClip music;
 
     [Header("Mix")]
+    //
+    // A gain per clip, because one master volume cannot balance a set. Sourced sounds
+    // arrive at wildly different levels -- measured over their loudest 50 ms, the button
+    // click sat at 0.11 and the game-over drone at 0.49, four times louder -- so playing
+    // them at one volume makes half the set inaudible and the other half shout.
+    //
+    // These are not a flat normalisation. Everything is levelled first, then weighted on
+    // purpose: a line clear should be the loudest thing the game says, and the pick-up tick
+    // fires on every single grab and must never nag.
+    [SerializeField, Range(0f, 1f)] private float pickupGain = 0.51f;
+    [SerializeField, Range(0f, 1f)] private float placeGain = 0.33f;
+    [SerializeField, Range(0f, 1f)] private float rejectedGain = 0.50f;
+    [SerializeField, Range(0f, 1f)] private float clearGain = 0.46f;
+    [SerializeField, Range(0f, 1f)] private float gameOverGain = 0.31f;
+    [SerializeField, Range(0f, 1f)] private float buttonGain = 1f;
+
     [SerializeField, Range(0f, 1f)] private float sfxVolume = 0.8f;
     [SerializeField, Range(0f, 1f)] private float musicVolume = 0.3f;
 
@@ -61,6 +77,13 @@ public class SoundBank : ScriptableObject
     public AudioClip GameOver => gameOver;
     public AudioClip Button => button;
     public AudioClip Music => music;
+
+    public float PickupGain => pickupGain;
+    public float PlaceGain => placeGain;
+    public float RejectedGain => rejectedGain;
+    public float ClearGain => clearGain;
+    public float GameOverGain => gameOverGain;
+    public float ButtonGain => buttonGain;
 
     public float SfxVolume => sfxVolume;
     public float MusicVolume => musicVolume;

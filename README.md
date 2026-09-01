@@ -82,7 +82,10 @@ Signing uses the debug keystore, which installs on a device but cannot be upload
   [Fredoka](https://fonts.google.com/specimen/Fredoka) (interface), both SIL Open Font
   License; the licence files ship alongside them in `Assets/Fonts`.
 - **Art** — generated from the scripts in this repository, not sourced.
-- **Audio** — placeholder tones, generated. To be replaced.
+- **Sound effects** — [Kenney](https://kenney.nl/assets/category:Audio) (UI Audio,
+  Interface Sounds, Digital Audio, Impact Sounds), all CC0 public domain. Levels and the
+  reasoning behind each choice are in `Assets/Audio/CREDITS.md`.
+- **Music** — still a generated placeholder.
 
 Volt Blast is an original implementation. It is not affiliated with, endorsed by, or
 derived from the code or assets of any other block puzzle game.

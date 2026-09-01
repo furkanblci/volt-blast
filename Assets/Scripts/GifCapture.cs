@@ -12,9 +12,18 @@ using BlockBlast.Core;
 /// Driving the piece directly rather than faking touch input keeps the recording
 /// repeatable, so a rerun after a visual change produces a comparable clip instead of a
 /// different game.
+///
+/// <see cref="Arm"/> defaults to false and must be set for every capture. It exists because
+/// this component was once left attached to the scene with its output path still filled in,
+/// and shipped: the game came up playing itself. A recorder that needs arming cannot be
+/// forgotten into a build, only into a scene where it does nothing.
 /// </summary>
 public class GifCapture : MonoBehaviour
 {
+    [Tooltip("Must be ticked for each capture. Off is the only safe resting state for " +
+             "something that drives the game on its own.")]
+    public bool Arm;
+
     public string OutputDirectory = "";
     public int DragFrames = 26;
     public int SettleFrames = 64;
@@ -30,7 +39,7 @@ public class GifCapture : MonoBehaviour
 
     private IEnumerator Start()
     {
-        if (string.IsNullOrEmpty(OutputDirectory)) yield break;
+        if (!Arm || string.IsNullOrEmpty(OutputDirectory)) yield break;
 
         Directory.CreateDirectory(OutputDirectory);
         foreach (string old in Directory.GetFiles(OutputDirectory, "*.png")) File.Delete(old);

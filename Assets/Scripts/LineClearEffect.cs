@@ -73,7 +73,7 @@ public class LineClearEffect : MonoBehaviour
 
     [Tooltip("How far a big streak overdrives the flash colour. Above 1 the frame goes " +
              "past the flash hue into white, which is what a long combo should look like.")]
-    [SerializeField, Range(1f, 3f)] private float frameFlashMaxOverdrive = 2.1f;
+    [SerializeField, Range(1f, 4f)] private float frameFlashMaxOverdrive = 3.1f;
 
     [Header("Draw Order")]
     [SerializeField] private int bandSortingOrder = 60;

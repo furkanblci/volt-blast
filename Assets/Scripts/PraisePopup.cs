@@ -42,14 +42,18 @@ public class PraisePopup : MonoBehaviour
     // bigger of the two. It used to be the other way round, which left the praise
     // shouting over the thing the player actually earned.
     [SerializeField] private float pointsFontSize = 13f;
-    [SerializeField] private float wordFontSize = 8f;
+    // Bumped back up from 8: the word has to hold its own over a board that is at its
+    // brightest at exactly the moment it appears, and at 8 it read as a caption.
+    [SerializeField] private float wordFontSize = 10.5f;
     [SerializeField] private Color pointsColor = Color.white;
-    [SerializeField] private Color wordColor = new Color32(120, 245, 255, 255);
+    // Near-white with a cyan bias rather than flat cyan. Saturated colour loses to a lit
+    // board; a white core with the hue carried by the outline and the bloom does not.
+    [SerializeField] private Color wordColor = new Color32(215, 252, 255, 255);
 
     [Tooltip("How far past full brightness the text is driven as it arrives. Above 1 the " +
              "glyphs clear the bloom threshold and the popup lights up rather than merely " +
              "appearing -- the same trick the landing cells and clear bands use.")]
-    [SerializeField, Range(1f, 3f)] private float arrivalFlare = 2.2f;
+    [SerializeField, Range(1f, 3f)] private float arrivalFlare = 2.6f;
 
     [Header("Stars")]
     [SerializeField, Range(0, 8)] private int starCount = 4;
@@ -150,7 +154,7 @@ public class PraisePopup : MonoBehaviour
         text.fontStyle = FontStyles.Bold;
         // Enough dark edge to survive the clear flash underneath, and no more: at 0.22 the
         // outline ate into the glyphs and the text read as blurred rather than as outlined.
-        text.outlineWidth = 0.11f;
+        text.outlineWidth = 0.16f;
         text.outlineColor = new Color32(6, 8, 18, 255);
         text.textWrappingMode = TextWrappingModes.NoWrap;
         text.sortingOrder = order;

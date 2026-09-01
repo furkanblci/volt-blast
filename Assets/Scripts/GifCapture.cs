@@ -26,6 +26,8 @@ public class GifCapture : MonoBehaviour
         new Color32(255, 178, 50, 255), new Color32(96, 158, 255, 255),
     };
 
+    public int Placements = 4;
+
     private IEnumerator Start()
     {
         if (string.IsNullOrEmpty(OutputDirectory)) yield break;
@@ -38,100 +40,129 @@ public class GifCapture : MonoBehaviour
         var spawn = FindAnyObjectByType<SpawnManager>();
         if (grid == null || gm == null || spawn == null) yield break;
 
-        // Let the title intro finish so it does not sit over the recording.
-        yield return new WaitForSeconds(2.2f);
+        yield return new WaitForSeconds(2.2f);   // let the title intro finish
 
         grid.ClearGrid();
         spawn.ClearTray();
         spawn.RefillTray();
-        yield return null;
+        SeedBoard(grid, 22);
+        if (ScoreManager.Instance != null) ScoreManager.Instance.ScoreTurn(400, 2);
+        yield return new WaitForSeconds(0.5f);   // let the seeding flare settle
 
-        BlockInstance piece = null;
-        Vector2Int anchor = Vector2Int.zero;
-        int bestRows = -1;
+        int frame = 0;
 
+        // Several moves rather than one: a single drop is over before a viewer has worked
+        // out what the game is. Every second placement is set up to clear, so the clip has
+        // a rhythm of ordinary moves punctuated by the thing worth showing.
+        for (int move = 0; move < Placements; move++)
+        {
+            BlockInstance piece = null;
+            Vector2Int anchor = Vector2Int.zero;
+            bool wantClear = move % 2 == 1;
+
+            if (!ChoosePlacement(grid, spawn, wantClear, ref piece, ref anchor))
+                if (!ChoosePlacement(grid, spawn, false, ref piece, ref anchor)) break;
+
+            if (wantClear) CompleteRowsAround(grid, piece, anchor);
+            yield return null;
+
+            Vector3 from = piece.transform.position;
+            Vector3 to = grid.CellToWorld(anchor.x, anchor.y) + new Vector3(0.4f, 1.2f, 0f);
+            piece.BeginDrag(from);
+
+            for (int k = 0; k < DragFrames; k++)
+            {
+                yield return new WaitForEndOfFrame();
+                Vector3 p = Vector3.Lerp(from, to, Easing.OutCubic(k / (float)(DragFrames - 1)));
+                piece.transform.position = p;
+                piece.DragTo(p, Vector3.zero);
+                Write(frame++);
+            }
+
+            piece.EndDrag();
+            gm.TryCommitPlacement(piece, anchor);
+
+            int settle = wantClear ? SettleFrames : SettleFrames / 3;
+            for (int k = 0; k < settle; k++)
+            {
+                yield return new WaitForEndOfFrame();
+                Write(frame++);
+            }
+
+            if (spawn.IsTrayEmpty) spawn.RefillTray();
+        }
+
+        Debug.Log($"[GifCapture] wrote {frame} frames to {OutputDirectory}");
+    }
+
+    /// <summary>Scatters colour over the board so a clear has something to read against.</summary>
+    private void SeedBoard(GridManager grid, int cells)
+    {
+        var single = new PlacementTable(new List<Vector2Int> { Vector2Int.zero }, grid.GridWidth, grid.GridHeight);
+        var rng = new System.Random(20260901);
+        int placed = 0, guard = 0;
+
+        while (placed < cells && guard++ < 400)
+        {
+            int x = rng.Next(grid.GridWidth);
+            int y = rng.Next(grid.GridHeight);
+            if (!grid.IsCellEmpty(x, y)) continue;
+            if (grid.TryPlace(single, x, y, Hues[(x * 3 + y * 5) % Hues.Length], out _)) placed++;
+        }
+    }
+
+    /// <summary>
+    /// Picks a tray piece and a legal anchor. When a clear is wanted it prefers a piece
+    /// spanning two or more rows, so completing them is worth watching.
+    /// </summary>
+    private bool ChoosePlacement(GridManager grid, SpawnManager spawn, bool preferTall,
+                                 ref BlockInstance piece, ref Vector2Int anchor)
+    {
+        // int.MinValue, not -1: when a short piece is wanted the score is negative, so a
+        // -1 floor rejected every candidate and the capture picked nothing at all.
+        int best = int.MinValue;
         foreach (BlockInstance p in spawn.Slots)
         {
             if (p == null || p.IsConsumed) continue;
 
             var rows = new HashSet<int>();
             foreach (Vector2Int c in p.Table.Cells) rows.Add(c.y);
-            if (rows.Count <= bestRows) continue;
+            int score = preferTall ? rows.Count : -rows.Count;
+            if (score <= best) continue;
 
-            bool placed = false;
-            for (int ay = 0; ay < grid.GridHeight && !placed; ay++)
-                for (int ax = 0; ax < grid.GridWidth && !placed; ax++)
+            for (int ay = 0; ay < grid.GridHeight; ay++)
+                for (int ax = 0; ax < grid.GridWidth; ax++)
                     if (grid.CanPlace(p.Table, ax, ay))
                     {
                         piece = p;
                         anchor = new Vector2Int(ax, ay);
-                        bestRows = rows.Count;
-                        placed = true;
+                        best = score;
+                        goto nextPiece;
                     }
+            nextPiece: ;
         }
+        return piece != null;
+    }
 
-        if (piece == null) yield break;
-
-        // Fill the whole board except the piece's target cells and a scatter of holes kept
-        // out of the rows that are about to clear. The first take cleared three rows off a
-        // half-empty board and left almost nothing behind: the clip was mostly an empty
-        // grid, so the clear had nothing to read against. A dense board that stays dense is
-        // what makes the two rows vanishing look like something happened.
+    /// <summary>Fills every row the piece will touch, except the cells it occupies.</summary>
+    private void CompleteRowsAround(GridManager grid, BlockInstance piece, Vector2Int anchor)
+    {
         var occupied = new HashSet<Vector2Int>();
-        var clearing = new HashSet<int>();
+        var rows = new HashSet<int>();
         foreach (Vector2Int c in piece.Table.Cells)
         {
             var w = new Vector2Int(anchor.x + c.x, anchor.y + c.y);
             occupied.Add(w);
-            clearing.Add(w.y);
-        }
-
-        var holes = new HashSet<Vector2Int>();
-        var rng = new System.Random(20260901);
-        while (holes.Count < 15)
-        {
-            int hx = rng.Next(grid.GridWidth);
-            int hy = rng.Next(grid.GridHeight);
-            if (clearing.Contains(hy)) continue;          // never break a row that must clear
-            holes.Add(new Vector2Int(hx, hy));
+            rows.Add(w.y);
         }
 
         var single = new PlacementTable(new List<Vector2Int> { Vector2Int.zero }, grid.GridWidth, grid.GridHeight);
-        for (int y = 0; y < grid.GridHeight; y++)
+        foreach (int y in rows)
             for (int x = 0; x < grid.GridWidth; x++)
             {
-                var cell = new Vector2Int(x, y);
-                if (occupied.Contains(cell) || holes.Contains(cell)) continue;
+                if (occupied.Contains(new Vector2Int(x, y)) || !grid.IsCellEmpty(x, y)) continue;
                 grid.TryPlace(single, x, y, Hues[(x * 3 + y * 5) % Hues.Length], out _);
             }
-
-        if (ScoreManager.Instance != null) ScoreManager.Instance.ScoreTurn(400, 2);
-        yield return null;
-
-        Vector3 from = piece.transform.position;
-        Vector3 to = grid.CellToWorld(anchor.x, anchor.y) + new Vector3(0.4f, 1.2f, 0f);
-        piece.BeginDrag(from);
-
-        int frame = 0;
-        for (int k = 0; k < DragFrames; k++)
-        {
-            yield return new WaitForEndOfFrame();
-            Vector3 p = Vector3.Lerp(from, to, Easing.OutCubic(k / (float)(DragFrames - 1)));
-            piece.transform.position = p;
-            piece.DragTo(p, Vector3.zero);
-            Write(frame++);
-        }
-
-        piece.EndDrag();
-        gm.TryCommitPlacement(piece, anchor);
-
-        for (int k = 0; k < SettleFrames; k++)
-        {
-            yield return new WaitForEndOfFrame();
-            Write(frame++);
-        }
-
-        Debug.Log($"[GifCapture] wrote {frame} frames to {OutputDirectory}");
     }
 
     private void Write(int index)

@@ -1,132 +1,213 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
+using BlockBlast.Core;
 
 /// <summary>
-/// Manages the ghost preview that shows where a block will be placed on the grid.
+/// Shows where a dragged piece would land, and -- the part that actually changes how the
+/// game plays -- which rows and columns that drop would clear.
+///
+/// Without the clear preview the player is doing the line arithmetic in their head on
+/// every drag. With it, setting up a double becomes something you can see rather than
+/// something you hope for.
+///
+/// Cells are pooled and only rebuilt when the drag controller reports that the snapped
+/// anchor actually changed. The previous version destroyed and re-instantiated them every
+/// frame of every drag, and -- because no ghost prefab is assigned in the scene -- leaked
+/// a Texture2D per cell per frame on top of the churn.
 /// </summary>
 public class GhostPreview : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private GridManager gridManager;
-    [SerializeField] private GridVisualizer gridVisualizer;
-    
-    [Header("Visual Settings")]
-    [SerializeField] private Color validColor = new Color(0.3f, 1f, 0.3f, 0.5f);   // Green transparent
-    [SerializeField] private Color invalidColor = new Color(1f, 0.3f, 0.3f, 0.5f); // Red transparent
     [SerializeField] private GameObject ghostCellPrefab;
+    [SerializeField] private BlockSkin skin;
 
-    private List<GameObject> ghostCells = new List<GameObject>();
-    private bool isVisible = false;
+    [Header("Colors")]
+    [SerializeField] private Color validColor = new Color32(190, 255, 255, 210);
+    [SerializeField] private Color invalidColor = new Color32(255, 70, 110, 150);
+
+    [Tooltip("Wash laid over rows and columns this drop would clear.")]
+    [SerializeField] private Color clearHighlightColor = new Color32(120, 245, 255, 130);
+
+    [Header("Draw Order")]
+    [SerializeField] private int highlightSortingOrder = 40;
+    [SerializeField] private int footprintSortingOrder = 50;
+
+    [Header("Pulse")]
+    [Tooltip("How much the clear highlight breathes, so it reads as a promise rather than board state.")]
+    [SerializeField, Range(0f, 0.6f)] private float highlightPulse = 0.22f;
+
+    [SerializeField] private float highlightPulseSpeed = 5.5f;
+
+    private readonly List<SpriteRenderer> pool = new List<SpriteRenderer>();
+
+    // Created once and shared by every fallback cell, instead of once per cell per frame.
+    private Sprite fallbackSprite;
+    private Texture2D fallbackTexture;
+
+    private int activeCount;
+    private int highlightCount;
+
+    /// <summary>Rows and columns the currently previewed drop would clear.</summary>
+    public int PreviewedLineCount { get; private set; }
 
     private void Awake()
     {
-        if (gridManager == null)
-            gridManager = FindObjectOfType<GridManager>();
-        
-        if (gridVisualizer == null)
-            gridVisualizer = FindObjectOfType<GridVisualizer>();
+        if (gridManager == null) gridManager = FindAnyObjectByType<GridManager>();
+        if (skin == null) skin = Resources.Load<BlockSkin>(BlockSkin.ResourcesPath);
     }
 
     /// <summary>
-    /// Shows the ghost preview at the specified grid position.
+    /// Draws the piece's footprint at an anchor. When the drop is legal, any line it
+    /// would complete is washed in underneath. Cells outside the board are skipped.
     /// </summary>
-    public void ShowPreview(BlockData blockData, int gridX, int gridY, bool isValid)
+    public void Show(PlacementTable table, Vector2Int anchor, bool valid)
     {
-        if (blockData == null) return;
-
-        // Clear previous preview
-        ClearPreview();
-
-        // Create ghost cells
-        foreach (Vector2Int cellOffset in blockData.Shape)
+        if (table == null || gridManager == null)
         {
-            int targetX = gridX + cellOffset.x;
-            int targetY = gridY + cellOffset.y;
-
-            // Skip cells outside grid
-            if (!gridManager.IsInsideGrid(targetX, targetY))
-                continue;
-
-            // Get world position for this grid cell
-            Vector3 worldPos = gridVisualizer.GetCellWorldPosition(targetX, targetY);
-
-            // Create ghost cell
-            GameObject ghostCell = CreateGhostCell(worldPos, isValid);
-            ghostCells.Add(ghostCell);
+            Hide();
+            return;
         }
 
-        isVisible = true;
-    }
+        GridGeometry geometry = gridManager.Geometry;
+        BoardState board = gridManager.Board;
+        int used = 0;
 
-    /// <summary>
-    /// Creates a single ghost cell at the specified position.
-    /// </summary>
-    private GameObject CreateGhostCell(Vector3 position, bool isValid)
-    {
-        GameObject cell;
-
-        if (ghostCellPrefab != null)
+        // Highlights go down first so the footprint reads on top of them.
+        ulong clearedMask = 0UL;
+        if (valid)
         {
-            cell = Instantiate(ghostCellPrefab, position, Quaternion.identity, transform);
+            ulong wouldOccupy = board.Occupancy | table.MaskAt(anchor.x, anchor.y);
+            LineClearResult preview = BoardRules.FindCompletedLines(wouldOccupy, board.Width, board.Height);
+            clearedMask = preview.ClearedMask;
+            PreviewedLineCount = preview.LineCount;
         }
         else
         {
-            // Create simple sprite if no prefab assigned
-            cell = new GameObject("GhostCell");
-            cell.transform.position = position;
-            cell.transform.parent = transform;
-            
-            SpriteRenderer renderer = cell.AddComponent<SpriteRenderer>();
-            renderer.sprite = CreateSquareSprite();
-            renderer.sortingOrder = 50; // Above grid, below dragged block
+            PreviewedLineCount = 0;
         }
 
-        // Set color based on validity
-        SpriteRenderer spriteRenderer = cell.GetComponent<SpriteRenderer>();
-        if (spriteRenderer != null)
+        ulong remaining = clearedMask;
+        while (remaining != 0UL)
         {
-            spriteRenderer.color = isValid ? validColor : invalidColor;
+            int index = BoardState.TrailingZeroCount(remaining);
+            remaining &= remaining - 1UL;
+
+            SpriteRenderer renderer = Rent(used++);
+            Place(renderer, geometry, index & 7, index >> 3, clearHighlightColor, highlightSortingOrder);
         }
 
-        // Scale to match grid cell size
-        cell.transform.localScale = Vector3.one * gridManager.CellSize;
+        highlightCount = used;
 
-        return cell;
-    }
-
-    /// <summary>
-    /// Hides and destroys all ghost cells.
-    /// </summary>
-    public void ClearPreview()
-    {
-        foreach (GameObject cell in ghostCells)
+        Color color = valid ? validColor : invalidColor;
+        foreach (Vector2Int cell in table.Cells)
         {
-            if (cell != null)
-            {
-                Destroy(cell);
-            }
+            int x = anchor.x + cell.x;
+            int y = anchor.y + cell.y;
+            if (!geometry.IsInside(x, y)) continue;
+
+            SpriteRenderer renderer = Rent(used++);
+            Place(renderer, geometry, x, y, color, footprintSortingOrder);
         }
-        ghostCells.Clear();
-        isVisible = false;
+
+        Retire(used);
     }
 
-    /// <summary>
-    /// Creates a simple square sprite for ghost cells.
-    /// </summary>
-    private Sprite CreateSquareSprite()
+    /// <summary>Parks every cell without destroying it, so the next drag reuses them.</summary>
+    public void Hide()
     {
-        // Create a simple white square texture
-        Texture2D texture = new Texture2D(1, 1);
-        texture.SetPixel(0, 0, Color.white);
-        texture.Apply();
-
-        return Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1);
+        Retire(0);
+        highlightCount = 0;
+        PreviewedLineCount = 0;
     }
 
-    public bool IsVisible => isVisible;
+    private void Update()
+    {
+        if (highlightCount == 0 || highlightPulse <= 0f) return;
+
+        // Breathe the wash so a pending clear catches the eye without a second effect.
+        float wave = (Mathf.Sin(Time.time * highlightPulseSpeed) + 1f) * 0.5f;
+        float alpha = clearHighlightColor.a * (1f - highlightPulse + highlightPulse * wave);
+
+        for (int i = 0; i < highlightCount && i < pool.Count; i++)
+        {
+            if (pool[i] == null) continue;
+            Color c = pool[i].color;
+            c.a = alpha;
+            pool[i].color = c;
+        }
+    }
+
+    private void Place(SpriteRenderer renderer, GridGeometry geometry, int x, int y, Color color, int order)
+    {
+        renderer.transform.position = geometry.CellToWorld(x, y);
+        renderer.transform.localScale = Vector3.one * geometry.CellSize;
+        renderer.color = color;
+        renderer.sortingOrder = order;
+    }
+
+    private SpriteRenderer Rent(int index)
+    {
+        while (pool.Count <= index) pool.Add(CreateCell(pool.Count));
+
+        SpriteRenderer renderer = pool[index];
+        if (!renderer.gameObject.activeSelf) renderer.gameObject.SetActive(true);
+        return renderer;
+    }
+
+    private void Retire(int keepCount)
+    {
+        for (int i = keepCount; i < pool.Count; i++)
+        {
+            if (pool[i] != null && pool[i].gameObject.activeSelf) pool[i].gameObject.SetActive(false);
+        }
+
+        activeCount = keepCount;
+    }
+
+    private SpriteRenderer CreateCell(int index)
+    {
+        GameObject go = ghostCellPrefab != null
+            ? Instantiate(ghostCellPrefab, transform)
+            : new GameObject($"GhostCell_{index}");
+
+        if (ghostCellPrefab == null) go.transform.SetParent(transform, false);
+        go.name = $"GhostCell_{index}";
+
+        SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
+        if (renderer == null) renderer = go.AddComponent<SpriteRenderer>();
+
+        // The loud ring, so a legal drop reads as the board lighting up ahead of the
+        // move rather than as a grey stencil laid over it.
+        if (skin != null && skin.BlockOutline != null) renderer.sprite = skin.BlockOutline;
+        if (renderer.sprite == null) renderer.sprite = GetFallbackSprite();
+        if (skin != null && skin.SpriteMaterial != null) renderer.sharedMaterial = skin.SpriteMaterial;
+
+        return renderer;
+    }
+
+    private Sprite GetFallbackSprite()
+    {
+        if (fallbackSprite != null) return fallbackSprite;
+
+        fallbackTexture = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };
+        fallbackTexture.SetPixel(0, 0, Color.white);
+        fallbackTexture.Apply();
+
+        fallbackSprite = Sprite.Create(
+            fallbackTexture, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
+        fallbackSprite.hideFlags = HideFlags.HideAndDontSave;
+
+        return fallbackSprite;
+    }
 
     private void OnDestroy()
     {
-        ClearPreview();
+        // These are created outside the asset database, so nothing else will collect them.
+        if (fallbackSprite != null) Destroy(fallbackSprite);
+        if (fallbackTexture != null) Destroy(fallbackTexture);
     }
+
+    /// <summary>How many ghost cells are currently visible. Useful in tests and debugging.</summary>
+    public int ActiveCellCount => activeCount;
 }

@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1a57c3e94d24f1e8a6f0c2d3e4b5a69, type: 3}
+  m_Name: ShapeCatalog
+  m_EditorClassIdentifier: 
+  entries:
+  - shape: {fileID: 11400000, guid: 3a45ef3e3cb215588f0f88c11fb83fed, type: 2}
+    weight: 1
+  - shape: {fileID: 11400000, guid: 943b1ab9ec9ead43a0e7f5a8e8a3be23, type: 2}
+    weight: 1.6
+  - shape: {fileID: 11400000, guid: 0e947c48cbc43d60fd7312e8ba2bef1f, type: 2}
+    weight: 1.6
+  - shape: {fileID: 11400000, guid: c68cec853dfef397d82376cd706bed35, type: 2}
+    weight: 1.5
+  - shape: {fileID: 11400000, guid: 47439fc08c76b3abfa4c351e1efbf873, type: 2}
+    weight: 1.5
+  - shape: {fileID: 11400000, guid: dac8e8cc455478b1853cc38297c69ee3, type: 2}
+    weight: 1
+  - shape: {fileID: 11400000, guid: 979268d37b3f2a6507ff56c5e811cb7b, type: 2}
+    weight: 1
+  - shape: {fileID: 11400000, guid: 242c98ec49cfa56057bf7febdb4bf4a0, type: 2}
+    weight: 0.5
+  - shape: {fileID: 11400000, guid: 56783be87599f69c1d09fdb0722b81af, type: 2}
+    weight: 0.5
+  - shape: {fileID: 11400000, guid: 7b9284d7807d2b9d88c9f35044ff6d1e, type: 2}
+    weight: 1.4
+  - shape: {fileID: 11400000, guid: a94c41eb087222aa9b9dc9a4dd320669, type: 2}
+    weight: 0.35
+  - shape: {fileID: 11400000, guid: 1e15ba3b0d65f65f28c8cc0441d87a7c, type: 2}
+    weight: 0.6
+  - shape: {fileID: 11400000, guid: 9d0c1ac6c0094ed22ff0e810eb3f020e, type: 2}
+    weight: 0.6
+  - shape: {fileID: 11400000, guid: 8cd7b576f44bc6cbae2d7dc17f219d40, type: 2}
+    weight: 1.3
+  - shape: {fileID: 11400000, guid: 49f1e5f92fb25dcc0dd871241afb9325, type: 2}
+    weight: 1.3
+  - shape: {fileID: 11400000, guid: 85fca535f10426034bf3d1bb6c1cd6b1, type: 2}
+    weight: 1.3
+  - shape: {fileID: 11400000, guid: 762da7b7716ba1ab493cfa2d6d59bb9f, type: 2}
+    weight: 1.3
+  - shape: {fileID: 11400000, guid: b034984d56c1dfc033b8b99d2d1e5e02, type: 2}
+    weight: 0.55
+  - shape: {fileID: 11400000, guid: bf96c469c06be7ce81324f86640f590d, type: 2}
+    weight: 0.55
+  - shape: {fileID: 11400000, guid: fafdf7e6afb00f9d3652cd043c19d4ec, type: 2}
+    weight: 0.55
+  - shape: {fileID: 11400000, guid: 3b1d5202082d1e9fef825290cf913492, type: 2}
+    weight: 0.55
+  - shape: {fileID: 11400000, guid: f59113e94acecad11173838eead073d5, type: 2}
+    weight: 0.5
+  - shape: {fileID: 11400000, guid: 1c4761e3a6fc7f7adb8917480bc73b82, type: 2}
+    weight: 0.5
+  palette:
+  - {r: 0.309804, g: 0.764706, b: 0.968627, a: 1}
+  - {r: 1, g: 0.717647, b: 0.301961, a: 1}
+  - {r: 0.505882, g: 0.780392, b: 0.517647, a: 1}
+  - {r: 0.898039, g: 0.45098, b: 0.45098, a: 1}
+  - {r: 0.729412, g: 0.407843, b: 0.784314, a: 1}
+  - {r: 1, g: 0.835294, b: 0.309804, a: 1}
+  - {r: 0.301961, g: 0.815686, b: 0.882353, a: 1}
+  - {r: 0.941176, g: 0.384314, b: 0.572549, a: 1}
+  selection:
+    candidateSets: 12
+    crowdingBias: 1.4
+    sizeFitWeight: 3
+    duplicatePenalty: 2.5
+    repeatPenalty: 1.2
+    recentWindow: 4
+    unplayablePenalty: 1000
+    playableBonus: 6
+    sequenceBonus: 14
+    clearOpportunityBonus: 9
+    clearOpportunityThreshold: 0.55
+    sequenceNodeBudget: 6000
+    selectionTemperature: 2
+    openSizeFactor: 1
+    crowdedSizeFactor: 0.45

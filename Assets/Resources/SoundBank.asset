@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd5d8ecac102a9d48b358b70a7acfb63, type: 3}
+  m_Name: SoundBank
+  m_EditorClassIdentifier: Assembly-CSharp::SoundBank
+  pickup: {fileID: 8300000, guid: e6873f65cbe59404e9880309c49b9b46, type: 3}
+  place: {fileID: 8300000, guid: 2a25b5f2243088543a8cdecec647f308, type: 3}
+  rejected: {fileID: 8300000, guid: 646cd64140620324e962516c7074b00e, type: 3}
+  clear: {fileID: 8300000, guid: 6d940b99a2ffb744890d613f69505387, type: 3}
+  clearPitchStep: 0.07
+  maxClearPitch: 1.7
+  gameOver: {fileID: 8300000, guid: 675d2b928de9eb246bac20c5b1d86a38, type: 3}
+  button: {fileID: 8300000, guid: 8a0aefc2ea0b1604dbf2ceb2d544533e, type: 3}
+  music: {fileID: 8300000, guid: 9dcaeecb061fd0e4dabd2a01bbdc83a5, type: 3}
+  sfxVolume: 0.8
+  musicVolume: 0.3

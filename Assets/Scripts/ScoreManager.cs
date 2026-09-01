@@ -1,27 +1,49 @@
 using UnityEngine;
-using System.Collections.Generic;
+using BlockBlast.Core;
 
 /// <summary>
-/// Manages the scoring system, including combos and high scores.
+/// Holds the running score and combo and reports changes to the UI.
+///
+/// The arithmetic itself moved to <see cref="ScoreRules"/> so it can be tuned and
+/// tested without entering Play mode. What stays here is the scene-facing state: the
+/// current totals, the persisted best, and the events the HUD listens to.
+///
+/// Scoring is now a single call per turn rather than a placement call plus a separate
+/// line-clear call, which is what previously let the combo advance out of step with the
+/// placement that caused it.
 /// </summary>
 public class ScoreManager : MonoBehaviour
 {
-    public static ScoreManager Instance { get; private set; }
+    /// <summary>
+    /// Resolves lazily when the static is empty. Recompiling while play mode is running
+    /// reloads the domain, which clears statics without re-running Awake on objects that
+    /// already exist -- leaving the singleton null for the rest of the session. That
+    /// cannot happen in a build, but it silently breaks the Editor, and a scene lookup on
+    /// the rare null is far cheaper than the confusion.
+    /// </summary>
+    public static ScoreManager Instance
+    {
+        get
+        {
+            if (instance == null) instance = FindAnyObjectByType<ScoreManager>();
+            return instance;
+        }
+        private set => instance = value;
+    }
 
-    [Header("Scoring Rules")]
-    [SerializeField] private int pointsPerBlockCell = 10;
-    [SerializeField] private int pointsPerLineClear = 100;
-    [SerializeField] private float comboMultiplier = 1.5f; // Multiplier per combo step
+    private static ScoreManager instance;
 
-    [Header("State")]
-    [SerializeField] private int currentScore = 0;
-    [SerializeField] private int highScore = 0;
-    [SerializeField] private int currentCombo = 0;
+    [Header("Scoring")]
+    [SerializeField] private ScoringConfig scoring = ScoringConfig.Default;
 
-    // Events for UI updates (could use C# events or UnityEvents)
+    [Header("State (read-only)")]
+    [SerializeField] private int currentScore;
+    [SerializeField] private int highScore;
+    [SerializeField] private int currentCombo;
+
     public delegate void ScoreChangedHelper(int newScore);
     public event ScoreChangedHelper OnScoreChanged;
-    
+
     public delegate void ComboChangedHelper(int newCombo);
     public event ComboChangedHelper OnComboChanged;
 
@@ -30,83 +52,47 @@ public class ScoreManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
 
-        LoadHighScore();
+        Instance = this;
+        scoring = scoring.Sanitized();
+        highScore = SaveSystem.ReadHighScore();
     }
 
-    /// <summary>
-    /// Adds points for placing a block.
-    /// </summary>
-    public void AddPlacementScore(BlockData block)
+    private void OnDestroy()
     {
-        if (block == null) return;
-
-        int points = block.Shape.Count * pointsPerBlockCell;
-        AddScore(points);
-        Debug.Log($"Placement Score: {points}");
-    }
-
-    /// <summary>
-    /// Calculates and adds points for clearing lines.
-    /// Handles combo logic.
-    /// </summary>
-    public void ProcessLineClears(int linesCleared)
-    {
-        if (linesCleared > 0)
-        {
-            // Increase combo
-            currentCombo++;
-            
-            // Calculate base score for lines (e.g. 100 * lines)
-            int baseLineScore = linesCleared * pointsPerLineClear;
-            
-            // Apply combo multiplier
-            // Formula: Base * (1 + (Combo-1) * 0.5) or similar
-            // Let's use simpler: Base * Combo
-            int totalScore = baseLineScore * currentCombo;
-            
-            AddScore(totalScore);
-            
-            Debug.Log($"Line Clear: {linesCleared} lines. Combo: {currentCombo}. Points: {totalScore}");
-            
-            OnComboChanged?.Invoke(currentCombo);
-        }
-        else
-        {
-            // Reset combo if no lines were cleared this turn
-            if (currentCombo > 0)
-            {
-                currentCombo = 0;
-                OnComboChanged?.Invoke(currentCombo);
-                Debug.Log("Combo Reset!");
-            }
-        }
-    }
-
-    private void AddScore(int amount)
-    {
-        currentScore += amount;
-        if (currentScore > highScore)
-        {
-            highScore = currentScore;
-            SaveHighScore();
-            OnHighScoreChanged?.Invoke(highScore);
-        }
-        
-        OnScoreChanged?.Invoke(currentScore);
+        if (Instance == this) Instance = null;
     }
 
     public int GetScore() => currentScore;
     public int GetHighScore() => highScore;
     public int GetCombo() => currentCombo;
+
+    /// <summary>
+    /// Scores one completed turn and advances the combo streak. Returns the breakdown so
+    /// the caller can drive combo popups and floating numbers from real values.
+    /// </summary>
+    public TurnScore ScoreTurn(int placedCellCount, int lineCount)
+    {
+        TurnScore result = ScoreRules.ScoreTurn(placedCellCount, lineCount, ref currentCombo, scoring);
+
+        currentScore += result.Total;
+        OnScoreChanged?.Invoke(currentScore);
+        OnComboChanged?.Invoke(currentCombo);
+
+        if (currentScore > highScore)
+        {
+            highScore = currentScore;
+            SaveSystem.WriteHighScore(highScore);
+            OnHighScoreChanged?.Invoke(highScore);
+        }
+
+        return result;
+    }
 
     public void ResetScore()
     {
@@ -114,18 +100,23 @@ public class ScoreManager : MonoBehaviour
         currentCombo = 0;
         OnScoreChanged?.Invoke(currentScore);
         OnComboChanged?.Invoke(currentCombo);
-    }
-
-    private void LoadHighScore()
-    {
-        highScore = PlayerPrefs.GetInt("HighScore", 0);
-        // Notify listeners of initial high score
         OnHighScoreChanged?.Invoke(highScore);
     }
 
-    private void SaveHighScore()
+    /// <summary>Restores totals from a save without touching the persisted high score.</summary>
+    public void Restore(int score, int combo)
     {
-        PlayerPrefs.SetInt("HighScore", highScore);
-        PlayerPrefs.Save();
+        currentScore = Mathf.Max(0, score);
+        currentCombo = Mathf.Max(0, combo);
+        OnScoreChanged?.Invoke(currentScore);
+        OnComboChanged?.Invoke(currentCombo);
+        OnHighScoreChanged?.Invoke(highScore);
     }
+
+    /// <summary>Commits the best score. Called when a run ends, in case it ended on the peak.</summary>
+    public void CommitHighScore() => SaveSystem.WriteHighScore(currentScore);
+
+#if UNITY_EDITOR
+    private void OnValidate() => scoring = scoring.Sanitized();
+#endif
 }

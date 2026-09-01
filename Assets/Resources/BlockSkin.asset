@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3d81f4a26b7405e9d284f61b30a7c58, type: 3}
+  m_Name: BlockSkin
+  m_EditorClassIdentifier: 
+  blocks:
+  - color: {r: 0.15686275, g: 0.8392157, b: 0.9411765, a: 1}
+    sprite: {fileID: 21300000, guid: c91094554f38e65bf7f90f954a70958c, type: 3}
+  - color: {r: 0.5882353, g: 0.9411765, b: 0.27450982, a: 1}
+    sprite: {fileID: 21300000, guid: b82fceb242f1644bf45d1c3e84c9fdcb, type: 3}
+  - color: {r: 1, g: 0.28235295, b: 0.61960787, a: 1}
+    sprite: {fileID: 21300000, guid: 9986b150db7cc583a50e25a981dbb604, type: 3}
+  - color: {r: 0.7372549, g: 0.47843137, b: 1, a: 1}
+    sprite: {fileID: 21300000, guid: 4676719178e55594b7b0576f82ef98a7, type: 3}
+  - color: {r: 1, g: 0.69803923, b: 0.19607843, a: 1}
+    sprite: {fileID: 21300000, guid: 6ae7addec11d35a265903a5fb72d0a02, type: 3}
+  - color: {r: 1, g: 0.4392157, b: 0.5568628, a: 1}
+    sprite: {fileID: 21300000, guid: cac09f89bdcc93438ac0f7f1697f478c, type: 3}
+  - color: {r: 0.3764706, g: 0.61960787, b: 1, a: 1}
+    sprite: {fileID: 21300000, guid: 5a568164f5d7e1daa9879e20d05fa4a9, type: 3}
+  emptyCell: {fileID: 21300000, guid: e0f25f22419d39f688996d1d343fe6bb, type: 3}
+  boardFrame: {fileID: 21300000, guid: 10228614bb0b9803da8372d6db05c2c1, type: 3}
+  glow: {fileID: 21300000, guid: 749e1012568914f85fd0e70aa164a456, type: 3}
+  particle: {fileID: 21300000, guid: e5a789116f8a9677cc8585f4d4d69d56, type: 3}
+  star: {fileID: 21300000, guid: 917842b1d6c1d345af334c780efc4a77, type: 3}
+  crown: {fileID: 21300000, guid: 358efc48d9e4e5a86b7b87db602ac66d, type: 3}
+  blockOutline: {fileID: 21300000, guid: 13a0e8e2d0139f634bb7c2f1515d4d57, type: 3}
+  impactRing: {fileID: 21300000, guid: 536753042b494f5409544d9e7a19014f, type: 3}
+  spriteMaterial: {fileID: 2100000, guid: 142d744df13712942b33e5a172b254b8, type: 2}
+  panelSprite: {fileID: 21300000, guid: a10ae2b8d309bda4581055e5ab73c588, type: 3}
+  panelRimSprite: {fileID: 21300000, guid: b40ccefb4d7f7dad4557bcdf444de84f, type: 3}
+  buttonSprite: {fileID: 21300000, guid: e1c512729738cbf4889dccc292cb9100, type: 3}
+  bestScoreBackground: {fileID: 21300000, guid: eef0cc9db9dd82f46ab18727d3353ec9, type: 3}
+  gearIcon: {fileID: 21300000, guid: 11ae84802e69e37499a1695e25fde1dc, type: 3}
+  closeIcon: {fileID: 21300000, guid: 3eb79e4616f20fb44a3fa03b6017677e, type: 3}
+  playIcon: {fileID: 21300000, guid: e5873d211fb28d843b298ff86213fc02, type: 3}
+  soundIcon: {fileID: 21300000, guid: 9884d61b4625f07449d3972cd9d03f01, type: 3}
+  musicIcon: {fileID: 21300000, guid: 589e372e8db4e414fb0270ea548664d0, type: 3}
+  replayIcon: {fileID: 21300000, guid: ff976dd02752f0e45b00b3ac72c8c780, type: 3}
+  slashIcon: {fileID: 21300000, guid: 954d0828d03b85947972c621e0cb96be, type: 3}
+  vibrateIcon: {fileID: 21300000, guid: 14a53d7531198066e3687cf3d8a79afd, type: 3}
+  emptyCellColor: {r: 0.050980393, g: 0.050980393, b: 0.08627451, a: 1}
+  boardBorderColor: {r: 0.3529412, g: 0.78431374, b: 0.92156863, a: 1}
+  pageBackgroundColor: {r: 0.039215688, g: 0.039215688, b: 0.07058824, a: 1}
+  clearFlashColor: {r: 0.5882353, g: 0.9607843, b: 1, a: 1}
+  accentColor: {r: 1, g: 0.70980394, b: 0, a: 1}
+  popupGlowColor: {r: 1, g: 0.1764706, b: 0.58431375, a: 1}

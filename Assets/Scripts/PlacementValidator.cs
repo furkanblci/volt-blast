@@ -1,82 +1,82 @@
 using UnityEngine;
-using System.Collections.Generic;
+using BlockBlast.Core;
 
 /// <summary>
-/// Handles validation of block placement on the grid.
-/// Checks if a block can be placed at a specific position.
+/// Bridges authoring assets to the rule engine: given a <see cref="BlockData"/> it
+/// resolves the compiled <see cref="PlacementTable"/> for the current board size and
+/// answers placement questions against it.
+///
+/// The rules themselves live in <see cref="BoardRules"/>. This component exists so the
+/// scene has one place to ask, and so BlockData-to-PlacementTable resolution is not
+/// duplicated across the drag controller, the spawner and the game-over check.
 /// </summary>
 public class PlacementValidator : MonoBehaviour
 {
     [SerializeField] private GridManager gridManager;
 
-    private void Awake()
+    private void Awake() => ResolveGrid();
+
+    private void ResolveGrid()
     {
-        if (gridManager == null)
+        if (gridManager == null) gridManager = FindAnyObjectByType<GridManager>();
+    }
+
+    private GridManager Grid
+    {
+        get
         {
-            gridManager = FindObjectOfType<GridManager>();
+            if (gridManager == null) ResolveGrid();
+            return gridManager;
         }
     }
 
-    /// <summary>
-    /// Checks if a block can be placed at the specified grid position.
-    /// </summary>
-    /// <param name="blockData">The block to place</param>
-    /// <param name="gridX">Grid X coordinate (anchor position)</param>
-    /// <param name="gridY">Grid Y coordinate (anchor position)</param>
-    /// <returns>True if placement is valid, false otherwise</returns>
-    public bool CanPlaceBlock(BlockData blockData, int gridX, int gridY)
+    /// <summary>Compiled masks for a piece on the current board, or null if either is missing.</summary>
+    public PlacementTable GetTable(BlockData blockData)
     {
-        if (blockData == null || gridManager == null)
+        GridManager grid = Grid;
+        if (blockData == null || grid == null) return null;
+
+        return blockData.GetPlacementTable(grid.GridWidth, grid.GridHeight);
+    }
+
+    public bool CanPlaceBlock(BlockData blockData, int anchorX, int anchorY)
+    {
+        GridManager grid = Grid;
+        if (grid == null) return false;
+
+        return BoardRules.CanPlace(grid.Board, GetTable(blockData), anchorX, anchorY);
+    }
+
+    /// <summary>True when this piece still fits somewhere. Backs the game-over check.</summary>
+    public bool CanPlaceAnywhere(BlockData blockData)
+    {
+        GridManager grid = Grid;
+        if (grid == null) return false;
+
+        return BoardRules.HasAnyPlacement(grid.Board, GetTable(blockData));
+    }
+
+    /// <summary>
+    /// Snaps a dragged piece's pivot to the board and reports whether it lands legally.
+    /// Takes the piece's own pivot position rather than the pointer position, so what the
+    /// player sees under their finger is exactly what gets tested.
+    /// </summary>
+    public bool TrySnap(BlockData blockData, Vector3 pivotWorldPosition, out Vector2Int anchor)
+    {
+        anchor = new Vector2Int(-1, -1);
+
+        GridManager grid = Grid;
+        if (grid == null || blockData == null) return false;
+
+        Vector2Int candidate = grid.WorldToNearestCell(pivotWorldPosition);
+        if (!CanPlaceBlock(blockData, candidate.x, candidate.y))
+        {
+            // Still report where it snapped so the ghost can show an invalid preview.
+            anchor = candidate;
             return false;
-
-        // Check each cell of the block
-        foreach (Vector2Int cellOffset in blockData.Shape)
-        {
-            int targetX = gridX + cellOffset.x;
-            int targetY = gridY + cellOffset.y;
-
-            // Check if cell is within grid bounds
-            if (!gridManager.IsInsideGrid(targetX, targetY))
-                return false;
-
-            // Check if cell is empty
-            if (!gridManager.IsCellEmpty(targetX, targetY))
-                return false;
         }
 
+        anchor = candidate;
         return true;
-    }
-
-    /// <summary>
-    /// Gets the grid positions that would be occupied by placing this block.
-    /// </summary>
-    public List<Vector2Int> GetOccupiedPositions(BlockData blockData, int gridX, int gridY)
-    {
-        List<Vector2Int> positions = new List<Vector2Int>();
-
-        if (blockData == null)
-            return positions;
-
-        foreach (Vector2Int cellOffset in blockData.Shape)
-        {
-            positions.Add(new Vector2Int(gridX + cellOffset.x, gridY + cellOffset.y));
-        }
-
-        return positions;
-    }
-
-    /// <summary>
-    /// Converts world position to grid coordinates and checks if placement is valid.
-    /// </summary>
-    public bool CanPlaceBlockAtWorldPosition(BlockData blockData, Vector3 worldPosition, out int gridX, out int gridY)
-    {
-        if (gridManager.GetCellFromWorldPosition(worldPosition, out gridX, out gridY))
-        {
-            return CanPlaceBlock(blockData, gridX, gridY);
-        }
-
-        gridX = -1;
-        gridY = -1;
-        return false;
     }
 }

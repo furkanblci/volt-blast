@@ -28,13 +28,13 @@ MonoBehaviour:
   - color: {r: 0.3764706, g: 0.61960787, b: 1, a: 1}
     sprite: {fileID: 21300000, guid: 5a568164f5d7e1daa9879e20d05fa4a9, type: 3}
   emptyCell: {fileID: 21300000, guid: e0f25f22419d39f688996d1d343fe6bb, type: 3}
-  boardFrame: {fileID: 21300000, guid: 10228614bb0b9803da8372d6db05c2c1, type: 3}
+  boardPlate: {fileID: 21300000, guid: ac9d55bb25d83da4fae484daa332db99, type: 3}
+  boardEdge: {fileID: 21300000, guid: 274da749b7032684e9037c100b4600f7, type: 3}
   glow: {fileID: 21300000, guid: 749e1012568914f85fd0e70aa164a456, type: 3}
   particle: {fileID: 21300000, guid: e5a789116f8a9677cc8585f4d4d69d56, type: 3}
   star: {fileID: 21300000, guid: 917842b1d6c1d345af334c780efc4a77, type: 3}
   crown: {fileID: 21300000, guid: 358efc48d9e4e5a86b7b87db602ac66d, type: 3}
   blockOutline: {fileID: 21300000, guid: 13a0e8e2d0139f634bb7c2f1515d4d57, type: 3}
-  impactRing: {fileID: 21300000, guid: 536753042b494f5409544d9e7a19014f, type: 3}
   spriteMaterial: {fileID: 2100000, guid: 142d744df13712942b33e5a172b254b8, type: 2}
   panelSprite: {fileID: 21300000, guid: a10ae2b8d309bda4581055e5ab73c588, type: 3}
   panelRimSprite: {fileID: 21300000, guid: b40ccefb4d7f7dad4557bcdf444de84f, type: 3}

@@ -20,6 +20,15 @@ public class CameraShake : MonoBehaviour
     [Tooltip("Ceiling on displacement in world units, so a huge combo cannot throw the board off screen.")]
     [SerializeField] private float maxOffset = 0.45f;
 
+    /// <summary>
+    /// Perlin noise does not use its full 0..1 range: in practice it stays near the middle,
+    /// roughly 0.25..0.75. Treating it as 0..1 made every shake about a quarter of its
+    /// requested size -- a single-line clear moved the camera 1.8px on a 1080p screen, which
+    /// is why it read as no shake at all. This rescales the noise to actually span -1..1 so
+    /// the amount asked for is the amount delivered.
+    /// </summary>
+    private const float NoiseSpanCorrection = 2f;
+
     private Transform target;
     private Vector3 appliedOffset;
     private float strength;
@@ -52,13 +61,17 @@ public class CameraShake : MonoBehaviour
 
         float t = Time.time * frequency;
         appliedOffset = new Vector3(
-            (Mathf.PerlinNoise(seed, t) - 0.5f) * 2f * strength,
-            (Mathf.PerlinNoise(seed + 37f, t) - 0.5f) * 2f * strength,
+            Wobble(seed, t) * strength,
+            Wobble(seed + 37f, t) * strength,
             0f);
 
         target.localPosition += appliedOffset;
         strength = Mathf.MoveTowards(strength, 0f, decay * strength * Time.deltaTime + 0.0005f);
     }
+
+    /// <summary>One axis of noise, in -1..1, clamped so a correction cannot overshoot.</summary>
+    private static float Wobble(float axisSeed, float t) =>
+        Mathf.Clamp((Mathf.PerlinNoise(axisSeed, t) - 0.5f) * 2f * NoiseSpanCorrection, -1f, 1f);
 
     private void OnDisable()
     {

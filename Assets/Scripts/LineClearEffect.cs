@@ -172,17 +172,30 @@ public class LineClearEffect : MonoBehaviour
 
         // Bands follow whole lines, so derive which rows and columns the mask completed
         // rather than drawing one band per cell.
+        var rows = new List<int>();
+        var columns = new List<int>();
+
         for (int y = 0; y < board.Height; y++)
         {
             ulong row = BoardState.RowMask(y, board.Width);
-            if ((mask & row) == row) SpawnBand(geometry, horizontal: true, index: y);
+            if ((mask & row) == row) rows.Add(y);
         }
 
         for (int x = 0; x < board.Width; x++)
         {
             ulong column = BoardState.ColumnMask(x, board.Height);
-            if ((mask & column) == column) SpawnBand(geometry, horizontal: false, index: x);
+            if ((mask & column) == column) columns.Add(x);
         }
+
+        // Each band dims as more of them fire together, so the total light a clear puts on
+        // screen stays roughly constant. At full brightness apiece, three overlapping bands
+        // blew out 40% of the screen -- hiding the score, the praise word and the board the
+        // effect was celebrating, at exactly the moment the player did something good. A
+        // bigger clear should read as *more lines lit*, not as a white sheet.
+        float share = 1f / Mathf.Sqrt(Mathf.Max(1, rows.Count + columns.Count));
+
+        foreach (int y in rows) SpawnBand(geometry, horizontal: true, index: y, brightness: share);
+        foreach (int x in columns) SpawnBand(geometry, horizontal: false, index: x, brightness: share);
 
         SpawnBurst(geometry, mask);
         // The frame is flared from TurnResolved, not here: CellsCleared fires before the
@@ -265,7 +278,7 @@ public class LineClearEffect : MonoBehaviour
 
     // ---------- band ----------
 
-    private void SpawnBand(GridGeometry geometry, bool horizontal, int index)
+    private void SpawnBand(GridGeometry geometry, bool horizontal, int index, float brightness)
     {
         SpriteRenderer band = RentBand();
 
@@ -273,10 +286,11 @@ public class LineClearEffect : MonoBehaviour
             ? new Vector3(geometry.Center.x, geometry.CellToWorld(0, index).y, 0f)
             : new Vector3(geometry.CellToWorld(index, 0).x, geometry.Center.y, 0f);
 
-        StartCoroutine(BandRoutine(band, geometry, horizontal));
+        StartCoroutine(BandRoutine(band, geometry, horizontal, brightness));
     }
 
-    private IEnumerator BandRoutine(SpriteRenderer band, GridGeometry geometry, bool horizontal)
+    private IEnumerator BandRoutine(SpriteRenderer band, GridGeometry geometry, bool horizontal,
+                                    float brightness)
     {
         float length = horizontal ? geometry.TotalWidth : geometry.TotalHeight;
         Color color = skin.ClearFlashColor;
@@ -296,7 +310,7 @@ public class LineClearEffect : MonoBehaviour
 
             // Brightest at the instant of the clear, falling away as it spreads.
             float flare = Mathf.LerpUnclamped(bandFlare, 1f, Easing.OutQuad(t));
-            Color lit = color * flare;
+            Color lit = color * flare * brightness;
             lit.a = 1f - Easing.InQuad(t);
             band.color = lit;
             yield return null;

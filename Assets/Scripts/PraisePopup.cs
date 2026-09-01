@@ -16,6 +16,9 @@ using BlockBlast.Core;
 /// </summary>
 public class PraisePopup : MonoBehaviour
 {
+    /// <summary>Dark edge plus neon halo, in Resources so no scene wiring is needed.</summary>
+    private const string PraiseMaterialResource = "PraiseNeon";
+
     [Header("Words")]
     [Tooltip("Praise ladder, weakest first. The tier is picked by lines cleared plus combo.")]
     //
@@ -152,10 +155,13 @@ public class PraisePopup : MonoBehaviour
         text.color = color;
         text.alignment = TextAlignmentOptions.Center;
         text.fontStyle = FontStyles.Bold;
-        // Enough dark edge to survive the clear flash underneath, and no more: at 0.22 the
-        // outline ate into the glyphs and the text read as blurred rather than as outlined.
-        text.outlineWidth = 0.16f;
-        text.outlineColor = new Color32(6, 8, 18, 255);
+        // The look comes from a material asset rather than from per-instance outline
+        // properties. Setting outlineWidth on the text forces TMP to clone the font
+        // material anyway, and a plain dark outline was all it could express -- the popup
+        // needs a dark edge to separate it from a board at its brightest *and* a neon halo
+        // to belong to the rest of the game, which is two effects one outline cannot do.
+        Material praise = Resources.Load<Material>(PraiseMaterialResource);
+        if (praise != null) text.fontSharedMaterial = praise;
         text.textWrappingMode = TextWrappingModes.NoWrap;
         text.sortingOrder = order;
 

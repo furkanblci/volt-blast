@@ -48,6 +48,12 @@ public class NeonPostFx : MonoBehaviour
     [Tooltip("How long a clear's bloom surge takes to fall back to normal.")]
     [SerializeField] private float surgeDuration = 0.45f;
 
+    [Tooltip("Hard ceiling on the surge. Bloom is full-screen, so an unbounded one turns " +
+             "the player's best move into a white rectangle: a five-line clear asked for " +
+             "+5.1 over a 1.75 base and blew out 40% of the screen, hiding the score, the " +
+             "praise and the board it was celebrating.")]
+    [SerializeField] private float maxSurge = 1.9f;
+
     private Volume volume;
     private Camera targetCamera;
     private Bloom bloom;
@@ -147,7 +153,7 @@ public class NeonPostFx : MonoBehaviour
         if (!Enabled || bloom == null || amount <= 0f) return;
 
         if (surge != null) StopCoroutine(surge);
-        surge = StartCoroutine(SurgeRoutine(amount));
+        surge = StartCoroutine(SurgeRoutine(Mathf.Min(amount, maxSurge)));
     }
 
     private IEnumerator SurgeRoutine(float amount)

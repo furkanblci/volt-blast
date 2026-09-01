@@ -91,29 +91,30 @@ public class GridVisualizer : MonoBehaviour
     /// </summary>
     private void BuildFrame()
     {
-        if (skin == null || skin.BoardFrame == null || gridManager == null) return;
+        if (skin == null || skin.BoardEdge == null || gridManager == null) return;
 
         GridGeometry geometry = gridManager.Geometry;
-        var go = new GameObject("BoardFrame");
-        go.transform.SetParent(transform, false);
 
-        Frame = go.AddComponent<SpriteRenderer>();
-        Frame.sprite = skin.BoardFrame;
-        // Sliced keeps the rounded corners from smearing as the middle stretches.
-        Frame.drawMode = SpriteDrawMode.Sliced;
         // Padding comes from the layout config, not a local field: the screen fit has to
         // account for the same number, and two copies would drift apart.
         float padding = BoardLayout.Active.Sanitized().boardFramePadding * geometry.Pitch;
-        Frame.size = new Vector2(
+        var size = new Vector2(
             geometry.TotalWidth + padding * 2f,
             geometry.TotalHeight + padding * 2f);
-        // The frame sprite carries brightness, the skin carries hue -- same trick as a
-        // tile, so the playfield edge lights up in the palette rather than staying grey.
-        Frame.color = skin.BoardBorderColor;
-        Frame.sortingOrder = frameSortingOrder;
-        if (skin.SpriteMaterial != null) Frame.sharedMaterial = skin.SpriteMaterial;
+        var centre = new Vector3(geometry.Center.x, geometry.Center.y, 0f);
 
-        go.transform.position = new Vector3(geometry.Center.x, geometry.Center.y, 0f);
+        // Two renderers, because only one of them may be flared. The plate is the board's
+        // ground and must stay dark; the edge is the lit tube and is what a clear lights up.
+        // As one sprite, overdriving the edge multiplied the ground with it and washed the
+        // whole playfield white.
+        SpriteRenderer plate = CreateFramePart("BoardPlate", skin.BoardPlate, size, centre,
+                                               frameSortingOrder - 1);
+        if (plate != null) plate.color = Color.white;
+
+        Frame = CreateFramePart("BoardEdge", skin.BoardEdge, size, centre, frameSortingOrder);
+        // The sprite carries brightness, the skin carries hue -- same trick as a tile, so
+        // the playfield edge lights up in the palette rather than staying grey.
+        if (Frame != null) Frame.color = skin.BoardBorderColor;
     }
 
     private void OnEnable()
@@ -320,6 +321,25 @@ public class GridVisualizer : MonoBehaviour
                 if (cell != null) cell.PlayDrain(y * gameOverDrainPerRow, gameOverDrainBrightness);
             }
         }
+    }
+
+    private SpriteRenderer CreateFramePart(string label, Sprite sprite, Vector2 size,
+                                           Vector3 centre, int sortingOrder)
+    {
+        if (sprite == null) return null;
+
+        var go = new GameObject(label);
+        go.transform.SetParent(transform, false);
+        go.transform.position = centre;
+
+        var renderer = go.AddComponent<SpriteRenderer>();
+        renderer.sprite = sprite;
+        // Sliced keeps the rounded corners from smearing as the middle stretches.
+        renderer.drawMode = SpriteDrawMode.Sliced;
+        renderer.size = size;
+        renderer.sortingOrder = sortingOrder;
+        if (skin.SpriteMaterial != null) renderer.sharedMaterial = skin.SpriteMaterial;
+        return renderer;
     }
 
     public void RepaintAll()

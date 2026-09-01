@@ -92,9 +92,13 @@ public class TurnFeedback : MonoBehaviour
 
         if (postFx != null)
         {
-            postFx.Surge(singleLineSurge
-                         + (cleared.LineCount - 1) * perLineSurge
-                         + Mathf.Max(0, score.Combo - 1) * perComboSurge);
+            // Square-rooted, not linear. Brightness is the wrong axis for "bigger": a
+            // four-line clear should read as *wider* than a one-line clear, and adding a
+            // fixed amount per line drove a full-screen effect past the point where
+            // anything on top of it could still be read.
+            float steps = Mathf.Max(0, cleared.LineCount - 1) * perLineSurge
+                          + Mathf.Max(0, score.Combo - 1) * perComboSurge;
+            postFx.Surge(singleLineSurge + Mathf.Sqrt(steps) * 0.5f);
         }
 
         if (cameraShake != null)

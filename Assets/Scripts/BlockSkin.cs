@@ -36,7 +36,13 @@ public class BlockSkin : ScriptableObject
 
     [Header("Board")]
     [SerializeField] private Sprite emptyCell;
-    [SerializeField] private Sprite boardFrame;
+    [Tooltip("The playfield's dark ground. Separate from the edge because the edge is " +
+             "flared on a clear, and a 9-sliced sprite stretched over the whole board " +
+             "carries its interior with it -- flaring one sprite lit the entire board.")]
+    [SerializeField] private Sprite boardPlate;
+
+    [Tooltip("The lit tube around the playfield, transparent inside.")]
+    [SerializeField] private Sprite boardEdge;
 
     [Header("Effects")]
     [SerializeField] private Sprite glow;
@@ -92,7 +98,8 @@ public class BlockSkin : ScriptableObject
     public int BlockCount => blocks?.Length ?? 0;
 
     public Sprite EmptyCell => emptyCell;
-    public Sprite BoardFrame => boardFrame;
+    public Sprite BoardPlate => boardPlate;
+    public Sprite BoardEdge => boardEdge;
     public Sprite Glow => glow;
     public Sprite Particle => particle;
     public Sprite Star => star;

@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: PraiseNeon
+  m_Name: WordmarkNeon
   m_Shader: {fileID: 4800000, guid: fe393ace9b354375a9cb14cdbbc28be4, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -26,7 +26,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _MainTex:
-        m_Texture: {fileID: 2916828489788530823, guid: 2f2e4f25499964e4d8bf3c1ea564101f, type: 2}
+        m_Texture: {fileID: 5445575525007832498, guid: 1eec01cac08e93f42994604604fb8835, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
@@ -34,15 +34,15 @@ Material:
     - _ColorMask: 15
     - _CullMode: 0
     - _FaceDilate: 0
-    - _GradientScale: 10
+    - _GradientScale: 8
     - _MaskSoftnessX: 0
     - _MaskSoftnessY: 0
     - _OutlineSoftness: 0
-    - _OutlineWidth: 0.17
+    - _OutlineWidth: 0.14
     - _PerspectiveFilter: 0.875
-    - _ScaleRatioA: 0.9
+    - _ScaleRatioA: 0.875
     - _ScaleRatioB: 1
-    - _ScaleRatioC: 0.65290177
+    - _ScaleRatioC: 0.6463068
     - _ScaleX: 1
     - _ScaleY: 1
     - _ShaderFlags: 0
@@ -52,12 +52,12 @@ Material:
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
-    - _TextureHeight: 1024
-    - _TextureWidth: 1024
-    - _UnderlayDilate: 0.62
+    - _TextureHeight: 512
+    - _TextureWidth: 512
+    - _UnderlayDilate: 0.55
     - _UnderlayOffsetX: 0
     - _UnderlayOffsetY: 0
-    - _UnderlaySoftness: 0.5
+    - _UnderlaySoftness: 0.55
     - _VertexOffsetX: 0
     - _VertexOffsetY: 0
     - _WeightBold: 0.75
@@ -65,7 +65,7 @@ Material:
     m_Colors:
     - _ClipRect: {r: -32767, g: -32767, b: 32767, a: 32767}
     - _FaceColor: {r: 1, g: 1, b: 1, a: 1}
-    - _OutlineColor: {r: 0.015686275, g: 0.023529412, b: 0.0627451, a: 1}
-    - _UnderlayColor: {r: 0.5882353, g: 0.98039216, b: 1, a: 1}
+    - _OutlineColor: {r: 0.15686275, g: 0.8392157, b: 0.9411765, a: 1}
+    - _UnderlayColor: {r: 0.47058824, g: 0.9411765, b: 1, a: 0.9}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

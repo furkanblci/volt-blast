@@ -28,6 +28,9 @@ public class TitleIntro : MonoBehaviour
     /// <summary>Where the display face lives, so no scene wiring is needed.</summary>
     private const string WordmarkFontResource = "Orbitron SDF";
 
+    /// <summary>Tube edge and halo for the mark, matching the rest of the game's light.</summary>
+    private const string WordmarkMaterialResource = "WordmarkNeon";
+
     [SerializeField] private string title = "VOLT BLAST";
 
     [Header("Timing")]
@@ -40,7 +43,15 @@ public class TitleIntro : MonoBehaviour
     [SerializeField] private float fadeDuration = 0.35f;
 
     [Header("Colours")]
+    [Tooltip("Face colour. White, so the palette gradient below reads as light passing " +
+             "through the glyphs rather than as the letters being painted.")]
     [SerializeField] private Color titleColor = new Color32(255, 255, 255, 255);
+
+    [Tooltip("Gradient across the mark, in the block palette. A wordmark in flat white was " +
+             "the one thing on screen not made of the game's own light.")]
+    [SerializeField] private Color gradientLeft = new Color32(40, 214, 240, 255);
+
+    [SerializeField] private Color gradientRight = new Color32(255, 72, 158, 255);
 
     /// <summary>True while the intro is on screen, so input can be held off.</summary>
     public bool IsPlaying { get; private set; }
@@ -101,9 +112,22 @@ public class TitleIntro : MonoBehaviour
         if (wordmarkFont == null) wordmarkFont = Resources.Load<TMP_FontAsset>(WordmarkFontResource);
         if (wordmarkFont != null) titleText.font = wordmarkFont;
 
-        // The score's neon preset is bound to the HUD font's atlas, so it cannot be reused
-        // here now that the mark uses a different face. The mark gets its own tint instead;
-        // bloom supplies the glow either way.
+        Material neon = Resources.Load<Material>(WordmarkMaterialResource);
+        if (neon != null) titleText.fontSharedMaterial = neon;
+
+        // A horizontal sweep across the whole mark rather than per-character, so it reads
+        // as one lit sign instead of ten differently coloured letters.
+        titleText.enableVertexGradient = true;
+        // Barely lightened at the top, pure at the bottom. Measured at a 0.35 mix the
+        // gradient washed out to near-white -- the halo and bloom already push the face
+        // that way, so the colour has to start further from white than looks right in the
+        // inspector.
+        titleText.colorGradient = new VertexGradient(
+            Color.Lerp(gradientLeft, Color.white, 0.12f),
+            Color.Lerp(gradientRight, Color.white, 0.12f),
+            gradientLeft,
+            gradientRight);
+
         titleText.color = titleColor;
 
         return true;

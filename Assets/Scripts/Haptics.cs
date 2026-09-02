@@ -13,8 +13,14 @@ using BlockBlast.Core;
 /// It is only a preference. The shaped path reaches into Java by name, and a device or an
 /// OEM build can refuse any step of that -- which is exactly what happened: a build shipped
 /// where nothing vibrated at all, because a failure anywhere in the chain fell through to
-/// silence. It now falls through to <c>Handheld.Vibrate</c> instead. A blunt buzz is worse
-/// than a tick and far better than nothing, and it is the behaviour that was working before.
+/// silence. There are three steps now, each a real degradation rather than a cliff:
+///
+///   1. <c>VibrationEffect</c> -- chosen length and force, the intended feel
+///   2. <c>Vibrator.vibrate(ms)</c> -- the right length, whatever force the motor gives
+///   3. <c>Handheld.Vibrate</c> -- a fixed half-second, only if there is no Vibrator at all
+///
+/// Step 2 matters more than it looks: without it, a phone with a vibrator but no amplitude
+/// control jumped straight to half a second per placement.
 ///
 /// Keeping a real call to <c>Handheld.Vibrate</c> in the code has a second effect worth
 /// knowing: it is how Unity decides to put <c>android.permission.VIBRATE</c> in the manifest.
@@ -40,27 +46,32 @@ public static class Haptics
     private static bool shaped;        // the device accepts VibrationEffect
 #endif
 
+    // Amplitudes are about a third down from where they started, durations untouched.
+    // Softening by shortening would have flattened the shapes into each other -- the two
+    // knocks of a streak only read as two while there is time between them -- so the force
+    // came down and the rhythm stayed.
+
     /// <summary>A piece landing: a short, light tick.</summary>
-    public static void Light() => OneShot(12, 70);
+    public static void Light() => OneShot(12, 48);
 
     /// <summary>A line cleared: firmer, still brief.</summary>
-    public static void Medium() => OneShot(20, 140);
+    public static void Medium() => OneShot(20, 95);
 
     /// <summary>
     /// A multi-line clear or a streak: two knocks rather than one long push, because a
     /// bigger event should read as *more*, and length alone just reads as a longer buzz.
     /// </summary>
-    public static void Heavy() => Pattern(new long[] { 0, 16, 34, 26 }, new int[] { 0, 180, 0, 255 });
+    public static void Heavy() => Pattern(new long[] { 0, 16, 34, 26 }, new int[] { 0, 125, 0, 175 });
 
     /// <summary>The end of a run: one weighted thud.</summary>
-    public static void Thud() => OneShot(45, 200);
+    public static void Thud() => OneShot(45, 140);
 
     /// <summary>
     /// A cue the player asked for, used when the vibrate toggle is switched on. Without it
     /// there is no way to tell a working device from a broken code path from a preference
     /// that was off all along -- which is the position this got into once already.
     /// </summary>
-    public static void Test() => OneShot(25, 160);
+    public static void Test() => OneShot(25, 110);
 
     // ---------- implementation ----------
 
@@ -90,7 +101,7 @@ public static class Haptics
             }
         }
 
-        Fallback();
+        Timed(milliseconds);
 #endif
     }
 
@@ -118,14 +129,51 @@ public static class Haptics
             }
         }
 
-        Fallback();
+        // Sum the pattern rather than replaying it: without amplitude control the knocks
+        // would fuse anyway, so one buzz of the same total length is the honest reduction.
+        long total = 0;
+        foreach (long t in timings) total += t;
+        Timed(total);
 #endif
     }
 
 #if UNITY_ANDROID && !UNITY_EDITOR
     /// <summary>
-    /// The blunt path. Also the reason Unity adds the VIBRATE permission to the manifest,
-    /// so this call earns its place even on devices that never reach it.
+    /// A buzz of a chosen length, for devices with a vibrator but no amplitude control.
+    ///
+    /// This step was missing: without it every such device dropped straight to
+    /// <c>Handheld.Vibrate</c>, which is a fixed half-second regardless of what was asked
+    /// for. A 12 ms buzz is not a shaped tick, but it is the difference between a tap and
+    /// the phone going off in your hand -- and it is the only way "softer" means anything
+    /// on hardware that cannot vary its force.
+    /// </summary>
+    private static void Timed(long milliseconds)
+    {
+        if (vibrator != null)
+        {
+            try
+            {
+                // System.Math, not Mathf: Mathf has no long overload, so two longs bind
+                // to Max(float, float) and come back a float. That compiles, and then
+                // looks for Java's vibrate(float) -- which does not exist -- and throws on
+                // the device. The type has to survive all the way to the JNI call.
+                vibrator.Call("vibrate", System.Math.Max(1L, milliseconds));
+                return;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[Haptics] timed vibration failed, falling back: " + e.Message);
+                vibrator = null;
+            }
+        }
+
+        Fallback();
+    }
+
+    /// <summary>
+    /// The blunt path, reached only when there is no usable Vibrator at all. Also the
+    /// reason Unity adds the VIBRATE permission to the manifest, so this call earns its
+    /// place even on devices that never execute it.
     /// </summary>
     private static void Fallback() => Handheld.Vibrate();
 

@@ -2,21 +2,22 @@ using UnityEngine;
 using BlockBlast.Core;
 
 /// <summary>
-/// Device vibration, as short shaped pulses rather than one blunt buzz.
+/// Device vibration, as short shaped pulses where the platform allows and a plain buzz
+/// where it does not.
 ///
 /// Unity's cross-platform <c>Handheld.Vibrate</c> is a single fixed ~500 ms rumble with no
-/// intensity control. Fired on every placement that is half a second of identical noise per
-/// move: it carries no information, it arrives long after the thing it is meant to punctuate,
-/// and it is actively unpleasant. This talks to Android's Vibrator directly instead, where a
-/// cue can be 12 ms at a chosen amplitude and land on the same frame as the visual.
+/// intensity control: fired on every placement that is half a second of identical noise per
+/// move, arriving long after the thing it punctuates. Android's own Vibrator can do 12 ms at
+/// a chosen amplitude on the same frame as the visual, so that is the path this prefers.
 ///
-/// The shapes are deliberately short. A haptic that outlasts its animation stops feeling like
-/// part of the event and starts feeling like the phone is broken -- the placement tick is
-/// gone before the cell has finished popping, and even the heaviest cue here is under 90 ms.
+/// It is only a preference. The shaped path reaches into Java by name, and a device or an
+/// OEM build can refuse any step of that -- which is exactly what happened: a build shipped
+/// where nothing vibrated at all, because a failure anywhere in the chain fell through to
+/// silence. It now falls through to <c>Handheld.Vibrate</c> instead. A blunt buzz is worse
+/// than a tick and far better than nothing, and it is the behaviour that was working before.
 ///
-/// API 26+ gets <c>VibrationEffect</c> with real amplitudes and waveforms. Below that (our
-/// minimum is 25) only untimed durations exist, so the shapes degrade to their lengths, which
-/// is still far closer to the intent than a half-second buzz.
+/// Keeping a real call to <c>Handheld.Vibrate</c> in the code has a second effect worth
+/// knowing: it is how Unity decides to put <c>android.permission.VIBRATE</c> in the manifest.
 /// </summary>
 public static class Haptics
 {
@@ -25,7 +26,8 @@ public static class Haptics
     ///
     /// This used to be a separate bool that only SettingsPanel wrote to, so a player who
     /// switched haptics off and relaunched got them back until they happened to open the
-    /// settings panel again. Reading the setting is one fewer copy of the truth.
+    /// settings panel again. Reading the setting is one fewer copy of the truth -- but note
+    /// it also means a preference switched off long ago is now honoured from launch.
     /// </summary>
     public static bool Enabled => GameSettings.Haptics;
 
@@ -35,8 +37,7 @@ public static class Haptics
 
     private static AndroidJavaObject vibrator;
     private static bool probed;
-    private static bool supportsAmplitude;
-    private static int apiLevel;
+    private static bool shaped;        // the device accepts VibrationEffect
 #endif
 
     /// <summary>A piece landing: a short, light tick.</summary>
@@ -54,6 +55,13 @@ public static class Haptics
     /// <summary>The end of a run: one weighted thud.</summary>
     public static void Thud() => OneShot(45, 200);
 
+    /// <summary>
+    /// A cue the player asked for, used when the vibrate toggle is switched on. Without it
+    /// there is no way to tell a working device from a broken code path from a preference
+    /// that was off all along -- which is the position this got into once already.
+    /// </summary>
+    public static void Test() => OneShot(25, 160);
+
     // ---------- implementation ----------
 
     private static void OneShot(long milliseconds, int amplitude)
@@ -61,19 +69,28 @@ public static class Haptics
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!Ready()) return;
 
-        if (supportsAmplitude)
+        if (shaped)
         {
-            using (var effect = new AndroidJavaClass("android.os.VibrationEffect"))
-            using (var one = effect.CallStatic<AndroidJavaObject>(
-                       "createOneShot", milliseconds, Mathf.Clamp(amplitude, 1, 255)))
+            try
             {
-                vibrator.Call("vibrate", one);
+                using (var effect = new AndroidJavaClass("android.os.VibrationEffect"))
+                using (var one = effect.CallStatic<AndroidJavaObject>(
+                           "createOneShot", milliseconds, Mathf.Clamp(amplitude, 1, 255)))
+                {
+                    vibrator.Call("vibrate", one);
+                }
+                return;
+            }
+            catch (System.Exception e)
+            {
+                // Whatever refused, stop trying: one failure per launch is a diagnostic,
+                // one per placement is a stall.
+                Debug.LogWarning("[Haptics] shaped vibration failed, falling back: " + e.Message);
+                shaped = false;
             }
         }
-        else
-        {
-            vibrator.Call("vibrate", milliseconds);
-        }
+
+        Fallback();
 #endif
     }
 
@@ -82,27 +99,43 @@ public static class Haptics
 #if UNITY_ANDROID && !UNITY_EDITOR
         if (!Ready()) return;
 
-        if (supportsAmplitude)
+        if (shaped)
         {
-            using (var effect = new AndroidJavaClass("android.os.VibrationEffect"))
-            using (var wave = effect.CallStatic<AndroidJavaObject>(
-                       "createWaveform", timings, amplitudes, -1))
+            try
             {
-                vibrator.Call("vibrate", wave);
+                using (var effect = new AndroidJavaClass("android.os.VibrationEffect"))
+                using (var wave = effect.CallStatic<AndroidJavaObject>(
+                           "createWaveform", timings, amplitudes, -1))
+                {
+                    vibrator.Call("vibrate", wave);
+                }
+                return;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[Haptics] waveform failed, falling back: " + e.Message);
+                shaped = false;
             }
         }
-        else
-        {
-            vibrator.Call("vibrate", timings, -1);
-        }
+
+        Fallback();
 #endif
     }
 
 #if UNITY_ANDROID && !UNITY_EDITOR
     /// <summary>
-    /// Resolves the Vibrator once and rate-limits. The limit is short enough that a clear
+    /// The blunt path. Also the reason Unity adds the VIBRATE permission to the manifest,
+    /// so this call earns its place even on devices that never reach it.
+    /// </summary>
+    private static void Fallback() => Handheld.Vibrate();
+
+    /// <summary>
+    /// Rate-limits, and resolves the Vibrator once. The limit is short enough that a clear
     /// and the placement that caused it can both be felt, and long enough that a combo
     /// chain cannot fuse into one continuous rumble.
+    ///
+    /// Returns true whenever vibration is allowed at all, whether or not the shaped path
+    /// is available -- the fallback needs no Java object.
     /// </summary>
     private static bool Ready()
     {
@@ -114,6 +147,7 @@ public static class Haptics
             probed = true;
             try
             {
+                int apiLevel;
                 using (var version = new AndroidJavaClass("android.os.Build$VERSION"))
                     apiLevel = version.GetStatic<int>("SDK_INT");
 
@@ -121,20 +155,23 @@ public static class Haptics
                 using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
                     vibrator = activity.Call<AndroidJavaObject>("getSystemService", "vibrator");
 
-                supportsAmplitude = apiLevel >= 26
-                                    && vibrator != null
-                                    && vibrator.Call<bool>("hasAmplitudeControl");
+                shaped = apiLevel >= 26
+                         && vibrator != null
+                         && vibrator.Call<bool>("hasVibrator")
+                         && vibrator.Call<bool>("hasAmplitudeControl");
+
+                Debug.Log("[Haptics] api " + apiLevel + ", shaped vibration " + (shaped ? "on" : "off"));
             }
             catch (System.Exception e)
             {
-                // A device without a vibrator, or an OEM that hides the service: silence is
-                // the correct outcome, not an exception on the frame a piece lands.
-                Debug.LogWarning("[Haptics] unavailable: " + e.Message);
+                // A device without a vibrator, or an OEM that hides the service. Silence is
+                // not the right answer here -- Handheld.Vibrate still works on plenty of
+                // phones where reaching the service by name does not.
+                Debug.LogWarning("[Haptics] Vibrator unavailable, using Handheld.Vibrate: " + e.Message);
                 vibrator = null;
+                shaped = false;
             }
         }
-
-        if (vibrator == null) return false;
 
         lastFiredAt = Time.unscaledTime;
         return true;

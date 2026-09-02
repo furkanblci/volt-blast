@@ -40,12 +40,17 @@ The gains level the set first and then weight it on purpose: a line clear is the
 thing the game says, and the pick-up tick is the quietest, because it fires on every single
 grab and must never nag.
 
-## Music — still a placeholder
+## Music — removed
 
-`MusicAmbient.wav` is generated (see `gen_audio.py` in the working notes) and is a
-stand-in. Kenney publishes no music, so this slot needs a separate source. Public-domain
-options: [freepd.com](https://freepd.com). [Incompetech](https://incompetech.com) is good
-but CC-BY, which means the credit is mandatory.
+There is no background music. The generated ambient loop that used to sit here was a
+low-frequency drone, and through a phone speaker that reads as the handset buzzing rather
+than as music — the player it was tested on described the phone as vibrating constantly.
 
-Whatever replaces it **must loop seamlessly** — a click at the loop point is the most
-noticeable fault in the mix, because it repeats forever.
+The `music` slot in `SoundBank` and the `Music` preference both still exist, so dropping a
+real track in is a one-field change. The settings panel no longer shows a music toggle;
+put it back when there is something for it to switch.
+
+Whatever lands there **must loop seamlessly** — a click at the loop point is the most
+noticeable fault in a mix, because it repeats forever — and it must not sit low enough to
+be felt rather than heard. Public-domain options: [freepd.com](https://freepd.com).
+

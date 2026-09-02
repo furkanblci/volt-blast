@@ -30,7 +30,6 @@ public class SettingsPanel : MonoBehaviour
     private Button gearButton;
     private CanvasGroup group;
     private Image soundSlash;
-    private Image musicSlash;
     private Image hapticsSlash;
     private Image glowSlash;
 
@@ -93,28 +92,30 @@ public class SettingsPanel : MonoBehaviour
         float toggleY = panelSize.y * 0.5f - 250f;
         var toggleSize = new Vector2(168f, 190f);
 
+        // Three toggles, not four: the music one went with the soundtrack. A switch that
+        // controls nothing is worse than no switch, because the player who flips it and
+        // hears no difference has learned the settings cannot be trusted.
         Button sound = UIFactory.IconToggle(panel, "SoundToggle", "Sound",
             skin != null ? skin.SoundIcon : null, skin != null ? skin.SlashIcon : null,
-            Color.white, toggleSize, new Vector2(-258f, toggleY), 30f, out soundSlash);
+            Color.white, toggleSize, new Vector2(-172f, toggleY), 30f, out soundSlash);
         sound.onClick.AddListener(() => { GameSettings.Sound = !GameSettings.Sound; Refresh(); });
-
-        Button music = UIFactory.IconToggle(panel, "MusicToggle", "Music",
-            skin != null ? skin.MusicIcon : null, skin != null ? skin.SlashIcon : null,
-            Color.white, toggleSize, new Vector2(-86f, toggleY), 30f, out musicSlash);
-        music.onClick.AddListener(() => { GameSettings.Music = !GameSettings.Music; Refresh(); });
 
         Button haptics = UIFactory.IconToggle(panel, "HapticsToggle", "Vibrate",
             skin != null ? skin.VibrateIcon : null, skin != null ? skin.SlashIcon : null,
-            Color.white, toggleSize, new Vector2(86f, toggleY), 30f, out hapticsSlash);
+            Color.white, toggleSize, new Vector2(0f, toggleY), 30f, out hapticsSlash);
         haptics.onClick.AddListener(() =>
         {
             GameSettings.Haptics = !GameSettings.Haptics;
+            // Buzz when switched on. It is the only way a player -- or anyone without the
+            // phone in front of them -- can tell a working device from a broken code path
+            // from a preference that was off the whole time.
+            if (GameSettings.Haptics) Haptics.Test();
             Refresh();
         });
 
         Button glow = UIFactory.IconToggle(panel, "GlowToggle", "Glow",
             skin != null ? skin.Star : null, skin != null ? skin.SlashIcon : null,
-            Color.white, toggleSize, new Vector2(258f, toggleY), 30f, out glowSlash);
+            Color.white, toggleSize, new Vector2(172f, toggleY), 30f, out glowSlash);
         glow.onClick.AddListener(() =>
         {
             GameSettings.Glow = !GameSettings.Glow;
@@ -135,7 +136,6 @@ public class SettingsPanel : MonoBehaviour
     private void Refresh()
     {
         if (soundSlash != null) soundSlash.enabled = !GameSettings.Sound;
-        if (musicSlash != null) musicSlash.enabled = !GameSettings.Music;
         if (hapticsSlash != null) hapticsSlash.enabled = !GameSettings.Haptics;
         if (glowSlash != null) glowSlash.enabled = !GameSettings.Glow;
     }

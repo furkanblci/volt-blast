@@ -20,7 +20,7 @@ MonoBehaviour:
   maxClearPitch: 1.7
   gameOver: {fileID: 8300000, guid: ccc7a10b5444b9c49a72d873f4c314ee, type: 3}
   button: {fileID: 8300000, guid: 858ddd62d0b62fd4dbce3f66cf528bf5, type: 3}
-  music: {fileID: 8300000, guid: 9dcaeecb061fd0e4dabd2a01bbdc83a5, type: 3}
+  music: {fileID: 0}
   pickupGain: 0.51
   placeGain: 0.33
   rejectedGain: 0.5

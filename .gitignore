@@ -76,3 +76,6 @@ crashlytics-build.properties
 # Local MCP wiring: contains an absolute path to this machine's uvx, so it is
 # per-developer setup rather than project configuration.
 /.mcp.json
+
+# Referans kaydi YERELDE kalir, depoya girmez.
+/_Referance/
